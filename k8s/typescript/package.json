@@ -2,12 +2,19 @@
   "name": "my-hono-app",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts"
+    "dev": "tsx watch src/index.ts",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
+    "@prisma/client": "^6.5.0",
     "ejs": "^3.1.10",
-    "hono": "^4.7.4"
+    "hono": "^4.7.4",
+    "prisma": "^6.5.0"
   },
   "devDependencies": {
     "@types/ejs": "^3.1.5",
