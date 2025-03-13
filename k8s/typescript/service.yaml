@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: typescript-service
+  name: hono-service
 spec:
   selector:
-    app: typescript-sample
+    app: hono-app
   type: NodePort
   ports:
-    - port: 3000          # クラスタ内部で公開するポート
-      targetPort: 3000    # Pod側のコンテナPort
-      nodePort: 30081     # Host側(=localhost)に割り当てるポート 
+    - port: 80
+      targetPort: 3000
+      nodePort: 30081  # (例) Nginxが30080なら 30081にする

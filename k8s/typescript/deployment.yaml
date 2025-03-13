@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: typescript-deployment
+  name: hono-deployment
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: typescript-sample
+      app: hono-app
   template:
     metadata:
       labels:
-        app: typescript-sample
+        app: hono-app
     spec:
       containers:
-      - name: typescript
-        image: node:18
-        ports:
-        - containerPort: 3000
-        command: ["npm", "start"] 
+        - name: hono-container
+          image: <YOUR_DOCKER_REPO>/hono-typescript:latest
+          # ↑ DockerHubやECRにpushしたイメージを指定する
+          ports:
+            - containerPort: 3000
