@@ -20,18 +20,20 @@ spec:
         app: hono-app
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "3000"
+        prometheus.io/port: "3001"
     spec:
+      imagePullSecrets:
+        - name: ecr-secret
       securityContext:
         runAsNonRoot: true
         runAsUser: 1001
         fsGroup: 1001
       containers:
         - name: hono-container
-          image: <YOUR_DOCKER_REPO>/hono-typescript:latest
+          image: 677276118659.dkr.ecr.ap-northeast-1.amazonaws.com/hono-app
           imagePullPolicy: Always
           ports:
-            - containerPort: 3000
+            - containerPort: 3001
               name: http
           resources:
             requests:
@@ -66,3 +68,5 @@ spec:
                 secretKeyRef:
                   name: database-secret
                   key: url
+            - name: ENV_TEST
+              value: "test test test"
