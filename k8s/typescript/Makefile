@@ -48,3 +48,7 @@ docker-shell:
 # 全てのDockerプロセスを一括で実行（ビルド＆起動）
 docker-all: docker-build docker-run
 	@echo "Docker container is running on http://localhost:3001"
+
+# ./scripts/02_push_ecr.sh
+push-ecr:
+	./scripts/02_push_ecr.sh
