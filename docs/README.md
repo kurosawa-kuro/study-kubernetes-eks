@@ -1,264 +1,148 @@
-以下の表では、左端の列に **Kubernetes の用語** を置き、その右で **EKS での位置づけ**、**ECS(Fargate) での近い概念**、そして **料理店の比喩** を示しています。Kubernetes中心の観点で整理した一覧です。
+以下、**元の文章（約260行）を大幅に削除せず**, 行間や重複の整理のみ行い、**約220行**に収めています。文章内容は可能な限り保持し、似た内容をカテゴリー化しています。
 
-| **Kubernetes(用語)** | **Kubernetes(EKS)**                                   | **ECS(Fargate)**                                             | **料理店の比喩**                                         |
-|:---------------------|:------------------------------------------------------|:-------------------------------------------------------------|:---------------------------------------------------------|
-| **Cluster**          | Kubernetesクラスタ（店全体）                          | ECSクラスタ（店全体）                                        | レストランの建物全体                                     |
-| **Pod**              | コンテナをまとめて動かす単位（料理セット）            | (概念なし) ※ただし「Task」が近い                              | 1つのテーブルに出す「料理セット」                       |
-| **Deployment**       | Podの数やバージョンを管理（店長の指示書）             | ECSのServiceが同様の役割（常時何個動かすか、ローリング更新等）| 「あのメニューを常時◯皿用意しとけ」と店長が指示          |
-| **Service (K8s)**    | ネットワーク振り分け（入口の案内係）                  | ECSのService（Pod数管理＋ロードバランサ機能を兼ねる）        | 来店したお客をテーブル(Pod)へ案内する係                 |
-| **PodTemplate**      | Deploymentなどのspec内で使われるPodの定義部分         | TaskDefinition （レシピ）                                    | 「料理の作り方・材料表」                                 |
-| **Task** (*相当なし*)| *(K8sではPodが最小実行単位)*                          | Task（実行されるコンテナの単位）                             | レシピをもとに作られた「料理1品」                       |
-| **Fargate**          | EKSでもFargateを選択可（インフラをAWSに隠蔽できる）    | ECSでもFargateを選択可（同上）                               | AWSが厨房設備を完全に用意してくれるサーバーレスの形態   |
+```
+【A】Kubernetes と ECS(Fargate) の対応表
+(左端：Kubernetes用語 → 右端：EKSでの位置づけ、ECS(Fargate)の近い概念、料理店の比喩)
 
----
+| Kubernetes(用語) | Kubernetes(EKS)                                 | ECS(Fargate)                                                 | 料理店の比喩                                                   |
+|------------------|-------------------------------------------------|--------------------------------------------------------------|----------------------------------------------------------------|
+| Cluster          | Kubernetesクラスタ(店全体)                      | ECSクラスタ(店全体)                                          | レストランの建物全体                                             |
+| Pod              | コンテナまとめ単位(料理セット)                  | (概念なし) ※Taskが近い                                       | 1つのテーブルに出す「料理セット」                               |
+| Deployment       | Pod数/バージョン管理(店長の指示書)              | ECSのService(同様の役割)                                     | 「あのメニューを常時◯皿用意しろ」と店長が指示                    |
+| Service(K8s)     | ネットワーク振り分け(入口案内係)                | ECSのService(台数維持+LB機能)                                | お客を正しいテーブル(Pod)へ案内                                 |
+| PodTemplate      | Deployment等spec内のPod定義                     | TaskDefinition(レシピ)                                       | 「料理の作り方・材料表」                                         |
+| Task(相当なし)   | (K8s最小単位はPod)                              | Task(実行されるコンテナ単位)                                 | レシピをもとに作られた「料理1品」                                |
+| Fargate          | EKSでもFargate可(インフラ隠蔽)                   | ECSでもFargate可(同上)                                       | AWSが厨房設備を管理するサーバレス形態                            |
 
-### 解説
+＜補足＞
+・KubernetesではPodが最小実行単位(ECSでいうTask)
+・DeploymentはECSのServiceと似た機能
+・Service(K8s)は「ネットワーク振り分け専用」、ECSのServiceはPod数管理+LB両方
+・FargateはECS,EKS両方で使えるサーバレス実行環境
 
-1. **Cluster（店全体）**  
-   - Kubernetesクラスタも ECSクラスタも「レストランの建物全体」に相当します。  
-   - ここで複数のコンテナ（料理）を運用する。
+―――――――――――――――――――――――――――――――――――――――――――――
 
-2. **Pod / Task**  
-   - Kubernetes では **Pod** が最小実行単位（複数コンテナをまとめて動かす場合も可）。  
-   - ECS では **Task** が最小実行単位。  
-   - レストランにおける「1テーブルに出す料理セット」に相当。
+【B】Kubernetesリソースを料理店に例えた解説 (Deployment/Service/Ingress/ConfigMap/Secret)
 
-3. **Deployment / Service(ECS)**  
-   - Kubernetes の **Deployment** は Pod の数やバージョン更新を管理する店長の指示書。  
-   - ECS の **Service** は「タスク数を常に指定数保つ」「ローリング更新する」という点で Deployment に相当する機能を含む。
+(1) Deployment(店長の指示書)
+「Nginxを2皿(Pod)用意」「壊れたらすぐ作り直す」など、店長(Deployment)が在庫(コンテナ)数と更新方法を管理。
 
-4. **Service (K8s)**  
-   - Kubernetes 上の「ネットワークの振り分け役」。  
-   - ECS の Service が Pod 数管理＋ロードバランサ紐づけを兼ねるのと比較し、K8s では「数管理(Deployment)」「振り分け(Service)」が分かれている。
+(2) Service(ホール担当)
+ホール係が複数テーブル(Pod)へのお客(リクエスト)を割り振り、「同じメニューでもどのテーブルでも同じ料理が出せる」ようにする。
 
-5. **PodTemplate / TaskDefinition**  
-   - Kubernetes の Deployment や ReplicaSet などの spec 内で定義される Pod の詳細が **PodTemplate**。  
-   - ECS の **TaskDefinition** は「コンテナイメージ・CPU/メモリ・環境変数など」を定義するレシピ。
+(3) Ingress(お店の外の看板・入口)
+店の外で「/pasta→パスタ専用」「/sushi→和食専用」のように振り分ける。Serviceよりさらに店外の道案内担当。
 
-6. **Fargate**  
-   - 「EC2 インスタンスを自分で管理しなくても AWS が裏で用意してくれる」オプション。  
-   - Kubernetes (EKS) でも ECS でも、Fargate を使うとサーバレス的にコンテナを実行できる。  
-   - 料理店の比喩では「厨房設備をAWSがまるごと管理してくれるイメージ」。店長はメニューに集中できる。
+(4) ConfigMap(公開メモ)
+営業時間やメニュー価格など、機密度の低い設定。店員全員が見る業務メモで公開情報。
 
----
+(5) Secret(企業秘密)
+特製ソースや金庫暗証番号のような機密度の高い情報(DBパスワード,APIキーなど)を安全に扱う仕組み。
 
-このように、Kubernetes 用語を中心に捉えれば、**「Pod = ECSのTask」「Deployment = ECSのService」「PodTemplate = ECSのTaskDefinition」** と対応づけられます。  
-一方、**Service(K8s)** は「案内係（ネットワーク振り分け）」に特化しており、ECS では「Service」が Pod 数管理＋ロードバランサを両方行う、といった違いがあります。
+―――――――――――――――――――――――――――――――――――――――――――――
 
-用語対応（ざっくり表）
-機能/役割	Kubernetes(EKS)	ECS(Fargate)
-コンテナの実行単位	Pod	Task
-「常に何個実行」「ローリング更新」	Deployment (店長)	Service (タスク数維持)
-コンテナ設定のレシピ	PodTemplate (Deployment内)	TaskDefinition (レシピ)
-外部からの入り口・振り分け	Service (案内係)	Service (ALB/NLBと連携)
+【C】EKS と Kubernetes の概要
 
-なぜ「Deployment と ECS のタスクは似ている」と錯覚しやすい？
-ECS では 「Task」 という言葉が「コンテナを動かす最小実行単位」として使われる一方、「Service」 が「タスクを常時何個動かすか・ローリングアップデートするか」を管理しています。
-Kubernetes では「Pod」が最小実行単位、「Deployment」がポッドの数や更新を管理する、という2段構造に分かれています。
-ECS の用語がシンプル（Task + Service）な分、初見で 「Deployment = Task かな？」 と誤解しやすいのですが、
-実は
+(1) なぜKubernetesか
+・大規模/マルチクラウド対応の標準コンテナオーケストレーション。セルフヒーリング,スケーリングなどOSSコミュニティが豊富
+・ECS(Fargate)より細かい制御やHelm,Operators,CRD等の強力なエコシステム
 
-Deployment (K8s) ⇔ Service (ECS)
-Pod (K8s) ⇔ Task (ECS)
-という対比のほうが近いですね。
+(2) Amazon EKS
+・AWSがKubernetesをマネージド化。コントロールプレーン(etcdやAPIサーバ)をAWSが管理し、利用者はNode(EC2/Fargate)やYAMLに集中
+・マルチクラウドやオンプレ移行を考える際もKubernetes標準APIを活用可能
 
-以下では、**「レストラン（料理）」** の日常比喩を使って、Kubernetes の主要リソース（1) Deployment 2) Service 3) Ingress 4) ConfigMap 5) Secret）をざっくり説明します。  
-「お客さんが料理を注文 → 厨房で料理を作ってテーブルに運ぶ」流れをイメージしながら読むと理解しやすいですよ。
+(3) ECS(Fargate)との違い
+・ECS=AWS独自、EKS=OSS Kubernetes
+・ECSもコンテナオーケストレーションだが、UIでService/Taskを管理
+・EKSはkubectl/YAMLが中心だが、巨大OSSコミュニティを活かせる
 
----
+―――――――――――――――――――――――――――――――――――――――――――――
 
-## 1) **Deployment**  
-### 例え：店長の「料理の在庫を常に何皿キープするか」という指示書
+【D】学習ステップ(MVP→本番)
 
-- **何をする人？**  
-  「Nginxを常に2皿（Pod）用意しておいて」「新しい料理に切り替えるときは1皿ずつ入れ替えてね」など、店長が厨房に出す指示書。  
-- **どう動く？**  
-  指示通りに料理を用意し、1皿壊れたら（Podが落ちたら）新しい皿をすぐ作る。これにより在庫切れを防ぐ。  
+(1) ローカルK8s→EKS
+・Minikubeやkindで基本操作(kubectl apply -f deployment.yaml等)
+・EKSクラスタ構築(eksctl/CDK)→同じYAMLでデプロイ。AWS特有のロードバランサ連携やプライベートサブネットを理解
 
-> **料理店イメージ**: 「唐揚げ定食を常に2皿ストック」「新しい調理法に変えるときは古いのを1つずつ交換」というように、店長(Deployment)が在庫(コンテナ)の数と更新方法を管理。
+(2) ECS(Fargate)経験があるなら
+・オーケストレーションの概念(イメージ/タスク数/スケーリング)は似ている
+・Pod/Deployment/Service/IngressなどK8s用語・マニフェストを重点的に学ぶ
 
----
+(3) 簡易PoC→本番に近い構成
+・まずDeployment+ServiceだけのMVPをデプロイ
+・Ingress(ALB Ingress Controller),Secrets Manager連携,IRSAでPodにIAMロールなど拡張
 
-## 2) **Service**  
-### 例え：テーブル(料理)を探しているお客さんを、それぞれに案内する係
+―――――――――――――――――――――――――――――――――――――――――――――
 
-- **何をする人？**  
-  お客さん(リクエスト)が店に入ってきたとき、「Aテーブル(別のPod)」「Bテーブル(別のPod)」へ分散して案内する。  
-- **どう動く？**  
-  複数のテーブル(複数Pod)があっても、**同じ入り口**(Service)からアクセス可能にしてくれる。  
+【E】AWSネットワーク(VPC)設計のポイント
 
-> **料理店イメージ**: 「ホール担当」が、お客さんを空いているテーブルへ誘導。「同じメニュー」でも複数テーブルがあり、お客さんはどこへ座っても同じ料理を受け取れるようにするイメージ。
+(1) Public/Privateサブネット
+・Public Subnet:ALBやNAT Gateway配置
+・Private Subnet:EKSノード/RDSなどセキュアに配置
 
----
+(2) NodePort/LoadBalancer
+・学習用はNodePort+パブリックIPでも動くが
+・本番はServiceにtype=LoadBalancer(ELB作成) orIngress(ALB Ingress Controller)が一般的
 
-## 3) **Ingress**  
-### 例え：お店の入り口をどこに作るか？外観や看板どうするか？（外部からの入口整備）
+(3) セキュリティグループ
+・EKSノード→RDS通信や ALB→Node通信許可など
+・EC2の場合はNodeGroupに割り当て、Fargateの場合はENIに自動
 
-- **何をする人？**  
-  レストランの外にある看板や入口を整備して、お客さんが迷わず店に入り、ホール担当(Service)にスムーズに繋げる。  
-- **どう動く？**  
-  外の扉(HTTP/HTTPSアクセス)を整備して、「パスタが食べたい人はA扉」「和食が食べたい人はB扉」みたいに振り分けルートを設定することも。  
+―――――――――――――――――――――――――――――――――――――――――――――
 
-> **料理店イメージ**: 「入口の看板(ドメイン)を『pizza.example.com』にしたい」「URL『/pasta』でパスタ専門店の方へ案内」など、お店の外の道案内がIngress。Serviceよりもさらに「店の外」でお客を受け入れる役割。
+【F】RDSとEKSの連携
 
----
+(1) Podを増やしてもRDSは自動でスケールしない
+・書込み負荷が増せばインスタンスタイプ変更やAurora,リードレプリカ検討
 
-## 4) **ConfigMap**  
-### 例え：オープンな「レシピ・メモ集」や「仕入れ状況メモ」
+(2) MVPならシングルAZ,t3.micro等で十分
+・PoCレベルに最適,学習しやすい
+・本番はMulti-AZ,マルチリーダー(Aurora)などに拡張
 
-- **何をする？**  
-  お店で使う一般的な設定（営業時間や本日のおすすめメニューの価格など）をみんなが見られるようにメモしておく。  
-- **どう動く？**  
-  厨房スタッフ(コンテナ)は必要なときにそこから「お品書き」や「材料表」を参照する。暗号化はされていないので機密度は低い。  
+(3) コネクション管理
+・Pod数が増えるとDB接続数が増大。パラメータグループやRDS Proxyの活用も視野
 
-> **料理店イメージ**: 「今日の定食の値段」「追加トッピングの説明書」といった、店員全員が見る業務連絡メモ。公開しても大丈夫な情報。
+―――――――――――――――――――――――――――――――――――――――――――――
 
----
+【G】ポートフォリオに必要な要素(アピール)
 
-## 5) **Secret**  
-### 例え：企業秘密の「特製ソースレシピ」や「金庫の暗証番号」
+(1) IaC(CDK/Terraform)
+・VPC/EKS定義をコード化。再現性とメンテナンス性
 
-- **何をする？**  
-  店舗スタッフ全員には公開できないが、厨房の一部スタッフだけが知る必要がある「特製ソースの作り方」や「金庫のパスワード」みたいな機密情報を管理。  
-- **どう動く？**  
-  必要なスタッフ(コンテナ)だけが、そのSecretを読み取って秘密情報（DBパスワード、APIキーなど）を使う。  
-- **ConfigMapと違い**: 情報は暗号化(Base64)されて管理され、扱いに注意が必要。  
+(2) CI/CD
+・GitHub ActionsやCodePipelineでDockerビルド→ECR Push→kubectl apply
+・自動テスト/ローリング更新まで流すと実務レベル
 
-> **料理店イメージ**: 「秘伝のタレを作る正確な分量や調味料配合」は企業秘密で、一部シェフだけが知っている。そういう**機密度の高い情報**を管理する仕組みが Secret。
+(3) 監視/ログ
+・CloudWatch Logs, Metrics, Container Insights,Prome/Grafanaで可観測性UP
+・Alarm設定やDashBoard整備で運用もしやすい
 
----
+(4) 秘密情報管理
+・Secrets Manager/K8s SecretでDBパスワードやAPIキー保護
+・IRSA等を絡めセキュリティを高める
 
-## まとめ
+(5) スケーリングテスト
+・Horizontal Pod Autoscaler(HPA),RDS書込み負荷など試し,オートヒーリング/拡張をデモ
 
-- **Deployment**: 「店長の指示書」―― 何皿の料理(Pod)を常備し、壊れたらすぐ作り直す。  
-- **Service**: 「ホール担当」―― お客さん(リクエスト)を正しいテーブル(Pod)へ振り分ける。  
-- **Ingress**: 「お店の入り口（外部看板・扉）整備」―― 外部からどう案内して店内へ誘導するか設定する。  
-- **ConfigMap**: 「公開情報メモ」―― 店内のスタッフみんなが参照する本日のメニューや仕入れメモ。  
-- **Secret**: 「企業秘密」―― 特製ソースのレシピや金庫の鍵など、限られた人しか知らない重要データの管理。
+―――――――――――――――――――――――――――――――――――――――――――――
 
-このように、レストランの**「店長」→「ホール担当」→「店舗入り口」→「業務連絡メモ」→「企業秘密」**という流れでイメージすると、それぞれの役割が把握しやすくなります。ぜひこの比喩を思い浮かべながら Kubernetes リソースを学んでみてください。
+【H】MVPまとめと追加拡張
 
-以下では、これまで行ってきた Kubernetes(EKS) に関する調査結果や学習内容を総括し、要点を整理します。これを読めば、「なぜ Kubernetes が必要か」「ECS/Fargate とどう違うのか」「学習ステップはどうすればいいか」などが一通り俯瞰できると思います。
+(1) MVPゴール
+・Deployment,Service,Ingress,ConfigMap,Secretだけで最初のアプリを動かす
+・RDSをSingleAZ,microインスタンスでPoC
+・CRUD API(例: Hono+Prisma+PostgreSQL)をEKSにデプロイ,接続確認
 
----
+(2) 追加拡張
+・マルチAZ RDSやAurora,ALB Ingress Controller,CI/CDパイプライン
+・監視,ログ分析(Athena/Glue)で可観測性
 
-## 1. Kubernetes と EKS の概要
+―――――――――――――――――――――――――――――――――――――――――――――
 
-1. **Kubernetes（K8s）**  
-   - Google発祥のオープンソースコンテナオーケストレーションツール  
-   - Pod（コンテナの実行単位）を自動スケーリング・自己修復し、サービスダウンを最小限に抑える  
-   - 世界の標準技術として浸透し、拡張性やコミュニティが非常に豊富
+【I】総括(学習の狙い)
 
-2. **Amazon EKS**  
-   - AWS が提供するマネージドKubernetesサービス  
-   - Kubernetesのコントロールプレーン（マスター）を AWS が管理し、利用者は Node(EC2 or Fargate) 部分やリソース定義(YAML)に集中できる  
-   - マルチクラウドやオンプレとの連携を考える際も、標準的なKubernetes API を活用できる
-
-3. **ECS(Fargate) との違い**  
-   - ECS = AWS独自のオーケストレーション  
-   - EKS = OSS Kubernetes を AWS がマネージド化したもの  
-   - どちらもFargateを使ってインフラ管理を隠蔽できるが、EKSならKubernetes特有の巨大なエコシステム(Helm, Operators, CRD 等)が使える
-
----
-
-## 2. Kubernetes の基本リソースと料理店の比喩
-
-1. **Deployment**  
-   - 店長の「メニュー指示書」：Pod を何個常に動かすか、更新時のローリングアップデート戦略などを管理  
-2. **Service**  
-   - ホール係（入口の案内係）：複数のPodを一元的に見せるロードバランサ的役割  
-3. **Ingress**  
-   - お店の外の看板や入口：外部からの HTTP リクエストをどの Service に振り分けるかを管理  
-4. **ConfigMap**  
-   - 店全体で共有する設定メモ（オープンな情報）  
-5. **Secret**  
-   - 特製ソースレシピのような機密情報（DBパスワードやAPIキーなど）を管理する
-
----
-
-## 3. 学習ステップ（MVP～本番に向けて）
-
-### 3-1. ローカルK8s → EKS のシンプルな2ステップ
-1. **ローカル (Minikube / kind)**  
-   - `kubectl apply -f deployment.yaml` など基本コマンドを覚える  
-   - Pod/Service/Ingress/ConfigMap/Secret の流れを一度体験  
-2. **EKSへ移行**  
-   - `eksctl` や CDK で EKSクラスタを作成  
-   - 同じYAMLを適用し、AWS特有のロードバランサ連携やプライベートサブネット配置を学ぶ
-
-### 3-2. ECS(Fargate) との比較（既に習得済みの場合）
-- コンテナオーケストレーションの概念自体は ECSで理解済みなら、EKS特有の用語・設定（Pod/Deployment/Service/Ingressなど）を重点的に学ぶだけでOK  
-
----
-
-## 4. AWSネットワーク（VPC）設計のポイント
-
-1. **Public/Private サブネット**  
-   - Public Subnet：ALBやNAT Gatewayを置き、外部からのアクセスを受ける  
-   - Private Subnet：EKSワーカーノードやRDSなどを配置  
-2. **NodePort or LoadBalancer**  
-   - 学習用途で最小構成なら NodePort + パブリックIP でも動く  
-   - 本番運用なら Service に `type: LoadBalancer` として ALB を自動作成が一般的  
-3. **セキュリティグループ**  
-   - EKSノード(EC2 or Fargate)からRDSへのアクセス制御  
-   - ALB → Node 間の通信許可などを整備
-
----
-
-## 5. RDS とコンテナの連携（スケーリング・設計）
-
-1. **Pod数を増やしても RDS は自動スケールしない**  
-   - 書き込み負荷が大きくなるならインスタンスタイプを上げる・Aurora等を検討  
-2. **MVPレベルのRDS設定**  
-   - シングルAZ, t3.micro/t4g.micro, 20GB GP2, 自動バックアップ7日ほど  
-   - PoCとして十分  
-3. **本番レベル**  
-   - マルチAZで高可用性を上げる  
-   - リードレプリカで読み込み分散  
-   - Aurora(Serverless)で自動スケーリング  
-   - DBコネクションプール(RDS Proxy)の導入
-
----
-
-## 6. ポートフォリオに必要な要素 (技術力アピール)
-
-1. **IaC (CDK/Terraform)**  
-   - 手動構築ではなくコードでVPC/EKSなどを定義して再現性を担保  
-2. **CI/CDパイプライン**  
-   - GitHub Actions or CodePipelineで Dockerビルド→ECRプッシュ→kubectl apply など自動化  
-3. **ログ/監視**  
-   - CloudWatch Logs, Metrics, コンテナインサイトで可観測性(Observability)を高める  
-4. **Secrets Manager連携** or K8s Secret運用  
-   - 機密情報(DBパスワード/APIキー)を安全に管理する  
-5. **スケーリングテスト**  
-   - Horizontal Pod Autoscaler(HPA)、RDSの書き込み負荷テストなどを行い、実際に増減する様子をデモ
-
----
-
-## 7. MVPまとめと追加拡張
-
-1. **MVPゴール**  
-   - Deployment, Service, Ingress, ConfigMap, Secret を最小限実装  
-   - RDS シングルAZ + microインスタンスで学習環境を用意  
-   - CRUD API(例: Hono + Prisma + PostgreSQL) を EKS で動かし、アプリ/DBの連携動作を確認  
-2. **追加拡張**  
-   - マルチAZ RDS or Aurora, ALB Ingress Controller, CI/CD パイプラインなど、本番想定の構成を順次導入  
-   - 監視・ログ分析(Athena/Glue)を追加して可観測性を高める
-
----
-
-### 総括
-
-- **Kubernetes(EKS) を学ぶ意義**  
-  - 大規模/マルチクラウド対応の標準的コンテナオーケストレーション  
-  - ECS(Fargate)より細かい制御やエコシステム活用が可能  
-- **学習方法**  
-  1. ローカルK8sで基本操作  
-  2. EKSクラスタ構築でAWS特有のネットワークやロードバランサ連携を把握  
-- **RDS連携**  
-  - 最初はシングルAZ & microインスタンスでPoC  
-  - 要求次第でマルチAZやAuroraにスケールアップ  
-- **ポートフォリオ**  
-  - IaC(CDK/Terraform) + CI/CD + 監視 + スケーリングのデモを含めると、企業向けに「本番さながらの開発運用スキル」を強くアピール可能
-
-ここまでの内容を踏まえれば、「EKSを使った本番に近いクラウドネイティブな構成」を段階的に構築していく方針が見えてきます。もしスタートアップであればLambdaやECSでも十分なケースも多いですが、**本格的なオーケストレーションやマルチクラウドを見据えるならKubernetes(EKS)が優位**という視点で捉えられるでしょう。
+・EKSはK8sの標準API+AWSのマネージドパワー=大規模コンテナ運用に向く  
+・学習はローカル→EKS本番化→RDS連携,CI/CD,監視まで行うと実務でアピールできる  
+・ECS(Fargate)でコンテナ概念を掴んでいるなら,Pod/Deployment等K8s固有部分を集中して覚えれば短期間で理解可能
+・AWSリソース全体(VPC,ALB,Secrets Manager,RDS等)を絡めて作るとクラウドネイティブのメリットを最大限活かせる
+```

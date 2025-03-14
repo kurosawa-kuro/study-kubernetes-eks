@@ -54,3 +54,28 @@ make status
 
 # (4) 終わったら削除
 make clean
+
+
+study-cloud/
+├── app/                    # アプリケーション本体（言語問わず）
+│   ├── src/
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── Dockerfile          # 共通イメージ定義 (Fargate,EKS共通)
+│   └── README.md
+├── infra/
+│   ├── ecs/                # ECS(Fargate)用の設定
+│   │   ├── task-def.json   # or terraform/cdk for ECS
+│   │   ├── service-def.json
+│   │   └── README.md
+│   ├── eks/                # EKS(Kubernetes)用の設定
+│   │   ├── deployment.yaml
+│   │   ├── service.yaml
+│   │   ├── ingress.yaml
+│   │   ├── README.md
+│   │   └── cdk/            # (任意) cdk scripts for EKS or helm chart
+│   └── README.md
+├── docs/                   # ドキュメント、メモ、設計仕様
+├── scripts/                # シェル/スクリプト類 (ビルド、デプロイなど)
+├── .gitignore
+└── README.md
