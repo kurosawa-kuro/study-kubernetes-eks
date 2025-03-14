@@ -113,11 +113,25 @@
             color: var(--text-primary);
             line-height: 1.5;
         }
+
+        .error-message {
+            background-color: #ff5252;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
     <h1><%= title %></h1>
     
+    <% if (error) { %>
+        <div class="error-message">
+            <%= error %>
+        </div>
+    <% } %>
+
     <div class="guestbook-form">
         <h2>新規メッセージ</h2>
         <form action="/entries" method="POST">
@@ -140,7 +154,7 @@
                 <div class="entry">
                     <div class="entry-header">
                         <span class="entry-name"><%= entry.name %></span>
-                        <span class="entry-date"><%= new Date(entry.createdAt).toLocaleString('ja-JP') %></span>
+                        <span class="entry-date"><%= new Date(entry.created_at).toLocaleString('ja-JP') %></span>
                     </div>
                     <div class="entry-message"><%= entry.message %></div>
                 </div>
