@@ -31,6 +31,9 @@ ssh -i ~/.ssh/hono-eks-key.pem ec2-user@<your-instance-public-ip>
 # システムの更新
 sudo dnf update -y
 
+# Gitのインストール
+sudo dnf install -y git
+
 # AWS CLIのインストール
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
@@ -46,6 +49,7 @@ curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/d
 sudo mv /tmp/eksctl /usr/local/bin
 
 # インストール確認
+git --version
 aws --version
 kubectl version --client
 eksctl version
@@ -116,33 +120,7 @@ sudo mv /tmp/eksctl /usr/local/bin
 eksctl version
 ```
 
-### 1.2. クラスタ設定ファイルの作成
-```yaml
-# cluster.yaml
-apiVersion: eksctl.io/v1alpha5
-kind: ClusterConfig
 
-metadata:
-  name: hono-cluster
-  region: ap-northeast-1
-
-nodeGroups:
-  - name: ng-1
-    instanceType: t3.medium
-    desiredCapacity: 2
-    minSize: 1
-    maxSize: 3
-    volumeSize: 20
-    volumeType: gp3
-    iam:
-      withAddonPolicies:
-        ebs: true
-```
-
-### 1.3. クラスタの作成
-```bash
-eksctl create cluster -f cluster.yaml
-```
 
 ## 2. クラスタへの接続設定
 
@@ -160,11 +138,6 @@ kubectl get nodes
 
 ### 3.1. シークレットの作成
 ```bash
-# データベース接続情報のシークレット作成
-kubectl create secret generic database-secret \
-  --from-literal=url="postgresql://dbmasteruser:dbmaster@ls-644e915cc7a6ba69ccf824a69cef04d45c847ed5.cps8g04q216q.ap-northeast-1.rds.amazonaws.com:5432/dbmaster" \
-  --namespace=default
-
 # 環境変数のシークレット作成
 kubectl create secret generic env-test-secret \
   --from-literal=test="test test test" \
@@ -187,30 +160,45 @@ kubectl apply -f k8s/service.yaml
 
 ## 4. アプリケーションへのアクセス設定
 
-### 4.1. LoadBalancerサービスの作成
+### 4.1. NodePortサービスの設定
 ```yaml
-# service-lb.yaml
+# service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: hono-service-lb
+  name: hono-service
 spec:
   selector:
     app: hono-app
+  type: NodePort
   ports:
     - name: http
-      port: 80
+      port: 3001
       targetPort: 3001
-  type: LoadBalancer
+      protocol: TCP
+      nodePort: 30081
 ```
 
+### 4.2. セキュリティグループの設定
+1. クラスターのセキュリティグループIDを取得:
 ```bash
-kubectl apply -f service-lb.yaml
+SECURITY_GROUP_ID=$(aws eks describe-cluster --name hono-cluster --query "cluster.resourcesVpcConfig.clusterSecurityGroupId" --output text)
 ```
 
-### 4.2. 外部アクセスURLの取得
+2. NodePortのインバウンドルールを追加:
 ```bash
-kubectl get service hono-service-lb
+aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 30081 --cidr 0.0.0.0/0
+```
+
+### 4.3. アクセス確認
+1. ノードのパブリックIPを確認:
+```bash
+kubectl get nodes -o wide
+```
+
+2. ブラウザでアクセス:
+```
+http://<node-public-ip>:30081
 ```
 
 ## 5. 動作確認
@@ -252,21 +240,34 @@ aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS
 
 ## 7. クリーンアップ
 
-### 7.1. アプリケーションの削除
+### 7.1. アプリケーションの停止（課金停止）
 ```bash
-kubectl delete -f service-lb.yaml
-kubectl delete -f k8s/deployment.yaml
-kubectl delete -f k8s/service.yaml
+# デプロイメントをスケールダウン
+kubectl scale deployment hono-deployment --replicas=0
+
+# サービスの削除
+kubectl delete service hono-service
+
+# シークレットの削除
+kubectl delete secret env-test-secret ecr-secret
 ```
 
-### 7.2. シークレットの削除
+### 7.2. クラスターの完全削除
 ```bash
-kubectl delete secret database-secret env-test-secret ecr-secret
+# クラスターとすべての関連リソースを削除
+eksctl delete cluster --name hono-cluster --region ap-northeast-1
 ```
 
-### 7.3. クラスタの削除
+### 7.3. 削除の確認
 ```bash
-eksctl delete cluster --name hono-cluster
+# Podの確認
+kubectl get pods
+
+# サービスの確認
+kubectl get services
+
+# ノードの確認
+kubectl get nodes
 ```
 
 ## 8. 注意点
@@ -274,3 +275,26 @@ eksctl delete cluster --name hono-cluster
 - クラスタの削除には約10-15分かかります
 - リソースの削除を忘れると課金が発生する可能性があります
 - 本番環境では適切なセキュリティ設定が必要です
+- NodePortアクセスは開発環境での使用を推奨
+- セキュリティグループの設定は必要最小限のアクセスに制限することを推奨
+
+## 9. トラブルシューティング補足
+### 9.1. よくあるエラーと対処法
+- `CreateContainerConfigError`: シークレットの設定を確認
+- `ImagePullBackOff`: ECR認証の確認
+- `Connection refused`: セキュリティグループの設定を確認
+
+### 9.2. デバッグ用コマンド
+```bash
+# Podの詳細確認
+kubectl describe pod <pod-name>
+
+# ログの確認
+kubectl logs <pod-name>
+
+# デプロイメントの状態確認
+kubectl describe deployment hono-deployment
+
+# サービスの詳細確認
+kubectl describe service hono-service
+```
