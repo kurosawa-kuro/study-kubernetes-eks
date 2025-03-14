@@ -69,4 +69,7 @@ spec:
                   name: database-secret
                   key: url
             - name: ENV_TEST
-              value: "test test test"
+              valueFrom:
+                secretKeyRef:
+                  name: env-test-secret
+                  key: test
