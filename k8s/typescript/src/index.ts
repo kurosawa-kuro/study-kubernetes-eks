@@ -6,6 +6,10 @@ import { readFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import pg from 'pg'
+import * as dotenv from 'dotenv'
+
+// 環境変数の読み込み
+dotenv.config()
 
 // 型定義
 interface GuestbookEntry {
@@ -111,7 +115,8 @@ class GuestbookController {
       const html = await c.get('render')('index', {
         title: 'ゲストブック',
         entries,
-        error: null
+        error: null,
+        env_test: process.env.ENV_TEST || 'ENV_TEST is not set'
       });
       
       return c.html(html);
@@ -120,7 +125,8 @@ class GuestbookController {
       return c.html(await c.get('render')('index', {
         title: 'ゲストブック',
         entries: [],
-        error: 'データの取得中にエラーが発生しました'
+        error: 'データの取得中にエラーが発生しました',
+        env_test: process.env.ENV_TEST || 'ENV_TEST is not set'
       }));
     } finally {
       client.release();
@@ -171,7 +177,7 @@ class Middleware {
 
   static async setupTemplateEngine(c: Context, next: Next): Promise<void> {
     c.set('render', async (template: string, data: Record<string, unknown> = {}) => {
-      const templatePath = join(__dirname, 'src', 'views', `${template}.ejs`);
+      const templatePath = join(__dirname, 'views', `${template}.ejs`);
       const templateContent = readFileSync(templatePath, 'utf-8');
       return ejs.render(templateContent, data);
     });
